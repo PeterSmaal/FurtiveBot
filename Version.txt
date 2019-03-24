@@ -1,0 +1,7 @@
+Version 0.1:
+
+### Changes ###
+- Bot now listens to !FL (Upper and lowercase does not matter)
+- Join command works with a channel name now (!fl join [voice_channel_name])
+- Disconnect command works (!fl disconnect)
+	* Lets you disconnect the bot from a channel
