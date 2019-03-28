@@ -36,11 +36,18 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         args = args.splice(1);
         switch(args[0]) {
             //Join voicechannel command Listens for 1 argument !fl join [channnelname]
+            case 'info':
+                bot.sendMessage({
+                    to: channelID,
+                    message: "I listen furtively in the background when asked to do so, I remember what I hear but only the last 30 seconds #goldfish"
+                });
+            break;
+            //Join voicechannel command Listens for 1 argument !fl join [channnelname]
             case 'join':
                 if(args[1] == undefined){
                     bot.sendMessage({
                         to: channelID,
-                        message: 'Seems like you forgot the channelname !join [channelname] is how you should use this command.' + args[1] 
+                        message: 'Seems like you forgot the name of the voicechannel !join [voicechannel name] is how you should use this command.' + args[1] 
                     });
                 }
                 else{
@@ -50,13 +57,25 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     catch(e){
                         bot.sendMessage({
                         to: channelID,
-                        message: 'U stoopid, that channel ain\'t even exist.'
+                        message: 'U stoopid, that channel ain\'t even exist, I\'m not that easily bamboozled.'
                     });}
                 }
             break;
                 //Disconnect from voicechannel command, removes the bot from the voicechannel.
             case 'disconnect':
-                bot.leaveVoiceChannel(bot.servers[bot.channels[channelID].guild_id].members['558702680693014559'].voice_channel_id);
+                bot.leaveVoiceChannel(bot.servers[bot.channels[channelID].guild_id].members[bot.id].voice_channel_id);
+                bot.sendMessage({
+                        to: channelID,
+                        message: "Okay okay, I'll leave..."
+                });
+            break;
+
+            //Show all commands
+            case 'help':
+                bot.sendMessage({
+                    to: channelID,
+                    message: "The following commands can be used:\n!fl info - shows info about the bot\n!fl join [voicechannel name] - joins the voicechannel with the name provided\n!fl disconnect - disconnects from the voicechannel it\'s connected to"
+                });
             break;
             // Just add any case commands if you want to..
          }
