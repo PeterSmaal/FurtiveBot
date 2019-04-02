@@ -2,11 +2,17 @@ var Discord = require('discord.io');
 var auth = require('./auth.json');
 // Configure logger settings
     colorize: true
-
+var shane = '231832972700024833';
 // Initialize Discord Bot
 var bot = new Discord.Client({
    token: auth.token,
 });
+
+//used in pin command
+var pinning = false;
+
+var fs = require('fs');
+var ffmpeg = require('ffmpeg');
 
 //Function used to find a channel ID by the name of the channel
 function findVoiceChannelByName(channelID, channelName){
@@ -20,8 +26,12 @@ function findVoiceChannelByName(channelID, channelName){
     }
     catch(e)
         {
-            console.log("Could not find channel with name "+ channelName);
+            console.log('Could not find channel with name '+ channelName);
         }
+}
+
+function findRoleByName(channelID, roleName){
+   return Object.values(bot.servers[bot.channels[channelID].guild_id].roles).find(c => c.name.toUpperCase() == roleName.toUpperCase()).id;
 }
 
 //Connect with the server, this can also be done automatically in the bot initialization.
@@ -35,11 +45,10 @@ bot.on('message', function (user, userID, channelID, message, evt) {
        
         args = args.splice(1);
         switch(args[0]) {
-            //Join voicechannel command Listens for 1 argument !fl join [channnelname]
             case 'info':
                 bot.sendMessage({
                     to: channelID,
-                    message: "I listen furtively in the background when asked to do so, I remember what I hear but only the last 30 seconds #goldfish"
+                    message: 'I listen furtively in the background when asked to do so, I remember what I hear but only the last 30 seconds #goldfish'
                 });
             break;
             //Join voicechannel command Listens for 1 argument !fl join [channnelname]
@@ -66,7 +75,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 bot.leaveVoiceChannel(bot.servers[bot.channels[channelID].guild_id].members[bot.id].voice_channel_id);
                 bot.sendMessage({
                         to: channelID,
-                        message: "Okay okay, I'll leave..."
+                        message: 'Okay okay, I\'ll leave...'
                 });
             break;
 
@@ -74,7 +83,103 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             case 'help':
                 bot.sendMessage({
                     to: channelID,
-                    message: "The following commands can be used:\n!fl info - shows info about the bot\n!fl join [voicechannel name] - joins the voicechannel with the name provided\n!fl disconnect - disconnects from the voicechannel it\'s connected to"
+                    message: 'The following commands can be used:\n\n!fl info - shows info about the bot\n!fl join [voicechannel name] - joins the voicechannel with the name provided\n!fl disconnect - disconnects from the voicechannel it\'s connected to\n!fl clear - Removes all the commands sent to me and my own messages within the last 100 messages\n!fl pin [message] - pins the message (admin only needs to be added)\n\n\nDev commands:\n\n!fl removeAllPins - removes all pinned messages(only access for shane currently)\n!fl getRoleID [name] - returns the id of the role with the given name\n\n\nWorking on:\n\n!fl start - to start recording and saving audio of voice channel, currently creates .wav but stays empty'
+                });
+            break;
+                
+            //create a pinned message
+            case 'pin':
+                //Remove first element of the array args, "pin"
+                args.shift();
+                
+                //resend the message as confirmation and to get a messageID to pin
+                bot.sendMessage({
+                    to: channelID,
+                    message: '"' + args.join(' ') + '" - Pinned by ' + bot.users[userID].username
+                }, function(error, response){
+                    //pin the message we just created with the id
+                    bot.pinMessage({
+                        channelID: channelID,
+                        messageID: response.id
+                    });
+                    //delete the original command message "!fl pin ...."
+                    bot.deleteMessage({
+                        channelID: channelID,
+                        messageID: evt.d.id
+                    });
+                });
+            break;    
+            
+            //Removes all messages with "!fl" or from the bot, keeps pinned messages, only checks last 100 messages (100 is limit)
+            case 'clear':
+                var messageArray = [];
+                bot.getMessages({
+                    channelID: channelID,
+                    limit: 20 
+                }, function (error, array){
+                                        
+                    var messagesToDelete = [];
+                    
+                    array.forEach(function(element){
+                        if(element.content.indexOf(' - Pinned by ') < 0){
+                            if(element.author.username === 'Furtive Listener' || element.content.indexOf('!fl') >= 0){
+                                messagesToDelete.push(element.id);
+                            }
+                        }
+                        
+                    });
+                
+                    bot.deleteMessages({
+                        channelID: channelID,
+                        messageIDs: messagesToDelete
+                    });
+                    
+                });
+            break;
+                
+            //Removes all pins, only access by username shane [this cannot be undone].    
+            case 'removeAllPins':
+                if(bot.users[userID].username === "Shane"){
+                     bot.getPinnedMessages({
+                        channelID: channelID
+                    }, function(error, response){
+                        response.forEach(function(element){
+                            bot.deletePinnedMessage({
+                                channelID: channelID,
+                                messageID: element.id
+                            });
+                        });
+                    });
+                }else{
+                    bot.sendMessage({
+                        to: channelID,
+                        message: 'You\'re not important enough to do this command.' 
+                    })
+                }
+               
+            break;
+            //Dev command, returns the id of the rolename given    
+            case 'getRoleID':
+                rolename = args[1];
+                bot.sendMessage({
+                    to: channelID,
+                    message: rolename + ': ' + findRoleByName(channelID, rolename)
+                });
+            break;    
+                
+            case 'start':
+                var user = userID;
+                console.log(user);
+                var voiceChannelID = bot.servers[bot.channels[channelID].guild_id].members[bot.id].voice_channel_id; 
+                bot.getAudioContext({channelID: voiceChannelID, maxStreamSize: 50 * 1024}, function(error, stream){
+                    console.log('error: ' + error);
+                    if(stream.members[shane]){
+                        stream.members[shane].read();    
+                    }else{
+                        console.log('User: ' + shane + ' not found.');
+                    }
+                    stream.pipe(fs.createWriteStream('./everyone.wav'));
+                    stream.on('incoming', function(SSRC, buffer){});
                 });
             break;
             // Just add any case commands if you want to..
